@@ -3,14 +3,21 @@ from airflow import DAG
 from airflow.utils.dates import days_ago
 from airflow.contrib.hooks.mongo_hook import MongoHook
 from airflow.operators.python_operator import PythonOperator
+
 import tweepy
-import json
 
-auth = tweepy.OAuthHandler('dcf', 'dcf')
-auth.set_access_token('abc', 'abc')
+def get_api_object():
+    consumer_key = 'consumer_key'
+    consumer_secret = 'consumer_secret'
+    access_token = 'access_token'
+    access_token_secret = 'access_token_secret'
 
+    auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
+    auth.set_access_token(access_token, access_token_secret)
+    api = tweepy.API(auth)
+    return api
 
-def get_last_tweet_id(conn_id, **kwargs):
+def get_last_tweet_id(conn_id):
     hook = MongoHook(conn_id=conn_id)
 
     marker = hook.find(mongo_collection='marker', query={"importer_key": "last_tweet_id"}, find_one=True, mongo_db='test')
@@ -18,9 +25,7 @@ def get_last_tweet_id(conn_id, **kwargs):
         return marker['last_id']
     return
 
-def first_time_getting_tweets(conn_id, **kwargs):
-    
-    api = tweepy.API(auth)
+def first_time_getting_tweets(conn_id, api):
 
     alltweets = []
 
@@ -63,9 +68,7 @@ def first_time_getting_tweets(conn_id, **kwargs):
     return outtweets
     
 
-def get_tweets(last_id, conn_id, **kwargs):
-
-    api = tweepy.API(auth)
+def get_tweets(last_id, conn_id, api):
 
     alltweets = []
     
@@ -99,24 +102,24 @@ def get_tweets(last_id, conn_id, **kwargs):
 def insert_to_mongo(**kwargs):
     conn_id = kwargs['conn_id']
     hook = MongoHook(conn_id)
-    
+    api = get_api_object()
+
     last_id = get_last_tweet_id(conn_id)
     outtweets = []
     if not last_id:
-        outtweets = first_time_getting_tweets(conn_id)
+        outtweets = first_time_getting_tweets(conn_id, api)
     else:
-        outtweets = get_tweets(last_id, conn_id)
+        outtweets = get_tweets(last_id, conn_id, api)
     print(f'All tweets are {outtweets}')
-    if(outtweets and len(outtweets)>0):
-        a = hook.insert_many(
+    if outtweets and len(outtweets)>0:
+            hook.insert_many(
             mongo_collection='twitter',
             docs=outtweets,
             mongo_db='test'
         )
 
-    finded = hook.find(mongo_collection='marker', query={"importer_key": "last_tweet_id"}, find_one=True, mongo_db='test')
-    print("Hi")
-    print(finded)
+    new_importer_key = hook.find(mongo_collection='marker', query={"importer_key": "last_tweet_id"}, find_one=True, mongo_db='test')
+    print(f'The new importer key is {new_importer_key}')
 
 """Default arguments used on DAG parameters."""
 default_args = {
