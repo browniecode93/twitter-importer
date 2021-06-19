@@ -17,6 +17,7 @@ def get_api_object():
     api = tweepy.API(auth)
     return api
 
+
 def get_last_tweet_id(conn_id):
     hook = MongoHook(conn_id=conn_id)
 
@@ -24,6 +25,7 @@ def get_last_tweet_id(conn_id):
     if marker:
         return marker['last_id']
     return
+
 
 def first_time_getting_tweets(conn_id, api):
 
@@ -75,7 +77,7 @@ def get_tweets(last_id, conn_id, api):
     #make initial request for most recent tweets greater than an id
     new_tweets = api.user_timeline(screen_name='mstootfarangi', count=300, since_id=last_id)
 
-    print(f"getting tweets after {last_id} hereeee2")
+    print(f"getting tweets after {last_id}")
     
     alltweets.extend(new_tweets)
 
@@ -85,7 +87,7 @@ def get_tweets(last_id, conn_id, api):
     if alltweets and len(alltweets) > 0:
         last_id = alltweets[0].id + 1
     else:
-        print("The username you've provided has not new tweet.")
+        print("The username you've provided has not any new tweet.")
         return
 
     hook = MongoHook(conn_id=conn_id)
