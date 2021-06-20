@@ -14,7 +14,7 @@ def get_api_object():
 
     auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
     auth.set_access_token(access_token, access_token_secret)
-    api = tweepy.API(auth)
+    api = tweepy.API(auth, wait_on_rate_limit=True)
     return api
 
 
@@ -66,7 +66,7 @@ def first_time_getting_tweets(conn_id, api, username):
             doc={"importer_key": f"last_tweet_id_{username}", "last_id": latest_id},
             mongo_db='test'                                                                              
         )
-    outtweets = [{'tw_id':tweet.id_str, 'tw_created_at': tweet.created_at, 'tw_text': tweet.text, 'tw_user': tweet.author._json['screen_name']} for tweet in alltweets]
+    outtweets = [{'tw_id':tweet.id_str, 'tw_created_at': tweet.created_at, 'tw_text': tweet.text.encode('utf-8'), 'tw_user': tweet.author._json['screen_name']} for tweet in alltweets]
     return outtweets
     
 
@@ -97,7 +97,7 @@ def get_tweets(last_id, conn_id, api, username):
         update_doc={"$set": {'last_id': last_id}},
         mongo_db='test'                                                                              
     )
-    outtweets = [{'tw_id': tweet.id_str, 'tw_created_at': tweet.created_at, 'tw_text': tweet.text, 'tw_user': tweet.author._json['screen_name']} for tweet in alltweets]
+    outtweets = [{'tw_id': tweet.id_str, 'tw_created_at': tweet.created_at, 'tw_text': tweet.text.encode('utf-8'), 'tw_user': tweet.author._json['screen_name']} for tweet in alltweets]
     return outtweets
 
 
