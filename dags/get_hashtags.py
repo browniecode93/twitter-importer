@@ -6,6 +6,7 @@ from airflow.operators.python_operator import PythonOperator
 
 import tweepy
 
+
 def get_api_object():
     consumer_key = 'consumer_key'
     consumer_secret = 'consumer_secret'
@@ -21,58 +22,67 @@ def get_api_object():
 def get_latest_tweet_time(conn_id, hashtag):
     hook = MongoHook(conn_id=conn_id)
 
-    marker = hook.find(mongo_collection='marker', query={"importer_key": f"latest_tweet_time_{hashtag}"}, find_one=True, mongo_db='test')
+    marker = hook.find(mongo_collection='marker', query={"importer_key": f"latest_tweet_time_{hashtag}"}, find_one=True,
+                       mongo_db='test')
     if marker:
         return marker['last_time']
     return
 
 
-def getting_hashtags(conn_id, api, hashtags):
-
+def getting_hashtags(conn_id, hashtags, **kwargs):
+    api = get_api_object()
     alltweets = []
+    last_hashtag_index = 0
     for hashtag in hashtags:
         latest_created_at = get_latest_tweet_time(conn_id, hashtag)
-
-        if latest_created_at:
-            new_tweets = tweepy.Cursor(api.search, q=hashtag).items()
+        print(f'The last tweet time for {hashtag} is {latest_created_at}')
+        if not latest_created_at:
+            new_tweets = tweepy.Cursor(api.search, q=hashtag).items(750)
         else:
-            new_tweets = tweepy.Cursor(api.search, q=hashtag, since=latest_created_at).items()
+            new_tweets = tweepy.Cursor(api.search, q=hashtag, since=latest_created_at).items(750)
 
         alltweets.extend(new_tweets)
-
-        #save the latest created_at
-        if len(alltweets) > 0:
-            latest_tweet_time = alltweets[0].created_at
+        len_all_tweets = len(alltweets)
+        if len_all_tweets > 0:
+            print(f'Number of new tweets is {len_all_tweets - last_hashtag_index + 1}')
+            latest_tweet_time = alltweets[last_hashtag_index].created_at
+            # Saving the index of the earliest tweet of a hashtag
+            last_hashtag_index = len_all_tweets + 1
         else:
-            print(f"The hashtag you've provided ({hashtag}) has not any tweet so far.")
-            return
+            print(f"The hashtag you've provided ({hashtag}) has not any new tweet so far.")
+            continue
 
-        print(f"...{len(alltweets)} tweets downloaded so far")
+        print(f"...{len_all_tweets} tweets downloaded so far")
 
         if latest_tweet_time:
             hook = MongoHook(conn_id=conn_id)
             hook.update_one(
                 mongo_collection='marker',
                 filter_doc={"importer_key": f"latest_tweet_time_{hashtag}"},
-                update_doc={"$set": {'last_time': latest_tweet_time}},
+                update_doc={"$set": {'last_time': latest_tweet_time.strftime('%Y-%m-%d')}},
+                upsert=True,
                 mongo_db='test'
             )
-        outtweets = [{'tw_hashtags':tweet.entities['hashtags'], 'tw_id':tweet.id_str, 'tw_created_at': tweet.created_at, 'tw_text': tweet.text.encode('utf-8'), 'tw_user': tweet.user['screen_name'], 'tw_location': tweet.user.location} for tweet in alltweets]
+    outtweets = [{'tw_hashtags': tweet.entities['hashtags'], 'tw_id': tweet.id_str, 'tw_created_at': tweet.created_at,
+                  'tw_text': tweet.text, 'tw_user': tweet.author._json['screen_name'],
+                  'tw_location': tweet.author._json['location']} for tweet in alltweets]
 
-    return outtweets
+    kwargs['task_instance'].xcom_push(key='all_tweets', value=outtweets)
 
 
 def insert_to_mongo(**kwargs):
     conn_id = kwargs['conn_id']
-    outtweets = kwargs['outtweets']
+    outtweets = kwargs['task_instance'].xcom_pull(task_ids='get_hashtags', key='all_tweets')
     hook = MongoHook(conn_id)
-
-    if outtweets and len(outtweets)>0:
-        hook.insert_many(
-        mongo_collection='twitter',
-        docs=outtweets,
-        mongo_db='test'
-    )
+    filter_docs = [{'tw_id': doc['tw_id']} for doc in outtweets]
+    if outtweets and len(outtweets) > 0:
+        a = hook.replace_many(
+            mongo_collection='twitter',
+            docs=outtweets,
+            filter_docs=filter_docs,
+            mongo_db='test',
+            upsert=True
+        )
 
 """Default arguments used on DAG parameters."""
 default_args = {
@@ -84,7 +94,7 @@ default_args = {
 }
 
 dag_params = {
-    'dag_id': 'mongo',
+    'dag_id': 'mongo_hashtags',
     'default_args': default_args,
     'schedule_interval': '@daily',
     'catchup': False,
@@ -92,21 +102,13 @@ dag_params = {
 }
 """Default parameters used on DAG instance."""
 with DAG(**dag_params) as dag:
-
-    get_api = PythonOperator(
-        task_id='get_api_object',
-        python_callable=get_api_object,
-        op_kwargs={
-            'conn_id': 'mongo_default'
-        },
-        dag=dag,
-    )
-
     get_hashtags = PythonOperator(
         task_id='get_hashtags',
         python_callable=getting_hashtags,
+        provide_context=True,
         op_kwargs={
-            'conn_id': 'mongo_default'
+            'conn_id': 'mongo_default',
+            'hashtags': ['#unitedAIRLINES', '#Flight', '#beach']
         },
         dag=dag,
     )
@@ -114,11 +116,12 @@ with DAG(**dag_params) as dag:
     insert_rows = PythonOperator(
         task_id='insert_to_mongo',
         python_callable=insert_to_mongo,
+        provide_context=True,
         op_kwargs={
-            'conn_id': 'mongo_default'
+            'conn_id': 'mongo_default',
         },
         dag=dag,
     )
 
-    get_api >> get_hashtags >> insert_rows
+    get_hashtags >> insert_rows
 
