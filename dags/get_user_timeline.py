@@ -147,7 +147,7 @@ default_args = {
 }
 
 dag_params = {
-    'dag_id': 'mongo',
+    'dag_id': 'get_user_timeline',
     'default_args': default_args,
     'schedule_interval': '@daily',
     'catchup': False,

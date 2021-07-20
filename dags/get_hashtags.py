@@ -102,7 +102,7 @@ default_args = {
 }
 
 dag_params = {
-    'dag_id': 'mongo_hashtags',
+    'dag_id': 'get_hashtags',
     'default_args': default_args,
     'schedule_interval': '0 23 * * *',
     'catchup': False,
