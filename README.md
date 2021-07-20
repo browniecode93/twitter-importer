@@ -36,6 +36,6 @@ https://github.com/browniecode93/twitter-importer/blob/3ef24a25d87fd5e97c4891594
 Modify list of hashtags:
 https://github.com/browniecode93/twitter-importer/blob/3ef24a25d87fd5e97c4891594a9763fac73934b3/dags/get_hashtags.py#L121
 
-_For more information about the project, please refer to [Documentation](https://medium.com/)_
+_For more information about the project, please refer to [Documentation](https://medium.com/@f.dzhband/a-twitter-importer-for-user-timeline-and-hashtags-using-airflow-and-mongodb-52ce67ee37d0)_
 
 _For more information about airflow image, please refer to [docker-airflow](https://github.com/puckel/docker-airflow)_
