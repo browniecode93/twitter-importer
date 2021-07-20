@@ -28,4 +28,5 @@ Clone the repo in your local machine.
 Run `docker-compose up` and airflow will be accessible at `localhost:8080/admin/`
 
 _For more information about the project, please refer to [Documentation](https://medium.com/)_
-_For more information about airflow image, please refer to [docker-airflow](https://github.com/puckel/docker-airflow)
+
+_For more information about airflow image, please refer to [docker-airflow](https://github.com/puckel/docker-airflow)_
