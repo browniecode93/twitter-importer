@@ -143,8 +143,8 @@ default_args = {
     'owner': 'airflow',
     'depends_on_past': False,
     'start_date': days_ago(2),
-    'retries': 10,
-    'retry_delay': timedelta(minutes=30),
+    'retries': 50,
+    'retry_delay': timedelta(minutes=15),
 }
 
 dag_params = {

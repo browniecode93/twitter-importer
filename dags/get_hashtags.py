@@ -15,7 +15,7 @@ def get_api_object():
 
     auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
     auth.set_access_token(access_token, access_token_secret)
-    api = tweepy.API(auth)
+    api = tweepy.API(auth, wait_on_rate_limit=True)
     return api
 
 
@@ -98,8 +98,8 @@ default_args = {
     'owner': 'airflow',
     'depends_on_past': False,
     'start_date': days_ago(2),
-    'retries': 10,
-    'retry_delay': timedelta(minutes=30),
+    'retries': 50,
+    'retry_delay': timedelta(minutes=15),
 }
 
 dag_params = {
