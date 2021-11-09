@@ -20,7 +20,6 @@ Clone the repo in your local machine.
 
 * Install Docker Desktop
 * Get Twitter Developer API Access
-* Make sure you set up vpn if Twitter is banned in your area
 
 <!-- USAGE EXAMPLE -->
 ## Usage
